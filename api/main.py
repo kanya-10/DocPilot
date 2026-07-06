@@ -8,7 +8,6 @@ POST /ask {"question": "..."} -> {"answer": ..., "sources": [...], "tools_used":
 """
 
 import time
-import traceback
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -58,9 +57,8 @@ async def ask(request: AskRequest, client_ip: str = "anonymous"):
     start = time.time()
     try:
         result = await agent.answer(request.question)
-    except Exception:
-        tb = traceback.format_exc()
-        log_event("error", question=request.question, traceback=tb)
+    except Exception as e:
+        log_event("error", question=request.question, error=str(e))
         raise HTTPException(status_code=500, detail="Something went wrong answering your question.")
 
     latency_ms = int((time.time() - start) * 1000)

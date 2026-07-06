@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DocPilot — LangChain docs, live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F7F8FA;
+    --ink: #1B2333;
+    --ink-dim: #5B6472;
+    --line: #DADFE6;
+    --amber: #B9791A;
+    --amber-bg: #FCEFD8;
+    --teal: #33665A;
+    --teal-bg: #E1EFEC;
+    --danger: #A23B3B;
+    --danger-bg: #F6E4E1;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 48px 24px 120px;
+  }
+
+  header {
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--ink-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0 0 8px;
+    letter-spacing: -0.01em;
+  }
+
+  .sub {
+    color: var(--ink-dim);
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 56ch;
+  }
+
+  .sub code {
+    font-family: 'IBM Plex Mono', monospace;
+    background: var(--line);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 13px;
+  }
+
+  .prompt-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 4px 4px 4px 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    box-shadow: 0 1px 2px rgba(27,35,51,0.04);
+  }
+
+  .prompt-bar .prefix {
+    color: var(--amber);
+    font-weight: 600;
+    user-select: none;
+  }
+
+  .prompt-bar input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 15px;
+    color: var(--ink);
+    padding: 12px 0;
+  }
+
+  .prompt-bar input::placeholder {
+    color: #A7AEB8;
+  }
+
+  .prompt-bar button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    border-radius: 5px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .prompt-bar button:hover { opacity: 0.85; }
+  .prompt-bar button:disabled { opacity: 0.4; cursor: default; }
+
+  .examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .examples button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--ink-dim);
+    border-radius: 5px;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .examples button:hover {
+    border-color: var(--ink-dim);
+    color: var(--ink);
+  }
+
+  .entries {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  .entry {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    padding: 14px 20px 6px;
+  }
+
+  .q-block {
+    padding: 0 20px 14px;
+    font-size: 15px;
+    font-weight: 500;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .a-block {
+    padding: 4px 20px 18px;
+    font-size: 15px;
+    line-height: 1.65;
+    white-space: pre-wrap;
+  }
+
+  .a-block strong { font-weight: 600; }
+
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 20px 18px;
+  }
+
+  .tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 4px 9px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+
+  .tag.confidence-high { background: var(--teal-bg); color: var(--teal); }
+  .tag.confidence-low { background: var(--danger-bg); color: var(--danger); }
+  .tag.tool { background: var(--amber-bg); color: var(--amber); }
+  .tag.latency { background: var(--line); color: var(--ink-dim); }
+
+  .sources {
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .sources a {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+    text-decoration: none;
+    word-break: break-all;
+  }
+
+  .sources a:hover { color: var(--amber); text-decoration: underline; }
+
+  .loading {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-dim);
+    padding: 20px;
+  }
+
+  .loading::after {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 12px;
+    background: var(--ink-dim);
+    margin-left: 4px;
+    animation: blink 1s steps(1) infinite;
+    vertical-align: -1px;
+  }
+
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .error {
+    border-color: var(--danger);
+    background: var(--danger-bg);
+    padding: 16px 20px;
+    font-size: 14px;
+    color: var(--danger);
+    border-radius: 10px;
+  }
+
+  footer {
+    margin-top: 56px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-dim);
+  }
+
+  footer a { color: var(--ink-dim); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loading::after { animation: none; }
+  }
+
+  @media (max-width: 600px) {
+    .wrap { padding: 32px 16px 100px; }
+    h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">docpilot / man / langchain</div>
+      <h1>Ask anything about LangChain</h1>
+      <div class="sub">
+        Answers grounded in the official docs, live GitHub issues, and the current
+        PyPI release &mdash; not just whatever the model remembers. Try
+        <code>What is a retriever?</code> or <code>Latest langchain version?</code>
+      </div>
+    </header>
+
+    <div class="prompt-bar">
+      <span class="prefix">docpilot $</span>
+      <input id="question" type="text" placeholder="ask a question and press enter..." autocomplete="off" />
+      <button id="ask-btn">Ask</button>
+    </div>
+
+    <div class="examples">
+      <button class="ex">What is LangChain?</button>
+      <button class="ex">How do I build a RAG pipeline?</button>
+      <button class="ex">What's the current version on PyPI?</button>
+      <button class="ex">How does tool calling work?</button>
+    </div>
+
+    <div class="entries" id="entries"></div>
+
+    <footer>
+      source: <a href="https://github.com/kanya-10/DocPilot" target="_blank">github.com/kanya-10/DocPilot</a>
+      &nbsp;·&nbsp; api docs: <a href="/docs">/docs</a>
+    </footer>
+  </div>
+
+<script>
+const input = document.getElementById('question');
+const askBtn = document.getElementById('ask-btn');
+const entries = document.getElementById('entries');
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderSources(sources) {
+  if (!sources || sources.length === 0) return '';
+  const unique = [...new Set(sources)];
+  return `
+    <div class="section-label">Sources</div>
+    <div class="sources">
+      ${unique.map(s => `<a href="${escapeHtml(s)}" target="_blank">${escapeHtml(s)}</a>`).join('')}
+    </div>
+  `;
+}
+
+function renderMeta(data) {
+  const confClass = data.confidence === 'high' ? 'confidence-high' : 'confidence-low';
+  const toolTags = (data.tools_used || [])
+    .map(t => `<span class="tag tool">${escapeHtml(t)}</span>`).join('');
+  return `
+    <div class="meta-row">
+      <span class="tag ${confClass}">confidence: ${escapeHtml(data.confidence)}</span>
+      ${toolTags}
+      <span class="tag latency">${data.latency_ms}ms</span>
+    </div>
+  `;
+}
+
+async function ask(question) {
+  if (!question.trim()) return;
+
+  const entry = document.createElement('div');
+  entry.className = 'entry';
+  entry.innerHTML = `
+    <div class="section-label">Question</div>
+    <div class="q-block">${escapeHtml(question)}</div>
+    <div class="loading">thinking</div>
+  `;
+  entries.prepend(entry);
+  input.value = '';
+  askBtn.disabled = true;
+
+  try {
+    const res = await fetch('/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `Request failed (${res.status})`);
+    }
+
+    const data = await res.json();
+    entry.innerHTML = `
+      <div class="section-label">Question</div>
+      <div class="q-block">${escapeHtml(question)}</div>
+      <div class="section-label">Answer</div>
+      <div class="a-block">${escapeHtml(data.answer)}</div>
+      ${renderMeta(data)}
+      ${renderSources(data.sources)}
+    `;
+  } catch (e) {
+    entry.innerHTML = `
+      <div class="section-label">Question</div>
+      <div class="q-block">${escapeHtml(question)}</div>
+      <div class="error">Something went wrong: ${escapeHtml(e.message)}</div>
+    `;
+  } finally {
+    askBtn.disabled = false;
+  }
+}
+
+askBtn.addEventListener('click', () => ask(input.value));
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') ask(input.value);
+});
+document.querySelectorAll('.ex').forEach(btn => {
+  btn.addEventListener('click', () => ask(btn.textContent));
+});
+</script>
+</body>
+</html>
