@@ -8,11 +8,14 @@ POST /ask {"question": "..."} -> {"answer": ..., "sources": [...], "tools_used":
 """
 
 import time
+import traceback
+from pathlib import Path
 
 from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from agent.core import DocPilotAgent
@@ -20,6 +23,14 @@ from observability.logger import log_event
 
 app = FastAPI(title="DocPilot", description="AI agent for LangChain docs, issues, and releases")
 agent = DocPilotAgent()
+
+STATIC_DIR = Path(__file__).parent / "static"
+
+
+@app.get("/")
+async def root():
+    return FileResponse(STATIC_DIR / "index.html")
+
 
 # Simple in-memory rate limiter: max N requests per IP per minute.
 # For real production traffic you'd move this to a reverse proxy / Redis,
@@ -57,8 +68,9 @@ async def ask(request: AskRequest, client_ip: str = "anonymous"):
     start = time.time()
     try:
         result = await agent.answer(request.question)
-    except Exception as e:
-        log_event("error", question=request.question, error=str(e))
+    except Exception:
+        tb = traceback.format_exc()
+        log_event("error", question=request.question, traceback=tb)
         raise HTTPException(status_code=500, detail="Something went wrong answering your question.")
 
     latency_ms = int((time.time() - start) * 1000)
