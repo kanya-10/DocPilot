@@ -1,0 +1,15 @@
+"""
+Launcher for DocPilot's API — sets the Windows event loop policy correctly
+before uvicorn starts, so MCP's subprocess-based tool server can spawn.
+"""
+
+import asyncio
+import sys
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("api.main:app", host="127.0.0.1", port=8000, reload=False)
