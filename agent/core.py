@@ -36,7 +36,7 @@ You have two ways to answer:
    get_latest_pypi_version (to check the current released version).
 
 Rules:
-- Prefer the documentation context when it answers the question. Cite sources using [1], [2] etc.
+- Prefer the documentation context when it answers the question. Cite sources using plain [1], [2] etc. -- do not use any other citation format or special bracket tokens.
 - If the question sounds like a bug, error, or "why doesn't this work", search GitHub issues.
 - If the question is about versions or "is this still the latest way to do X", check the PyPI version.
 - If neither the docs nor the tools give you a confident answer, say so explicitly.
@@ -61,6 +61,11 @@ class DocPilotAgent:
         self.retriever = Retriever()
 
     def _complete_with_retry(self, messages, tools, max_retries: int = 4):
+        """
+        Groq's free tier has a low tokens-per-minute limit, which is easy to
+        hit during eval runs or bursts of tool-calling. Retry with backoff
+        instead of failing the whole request on a transient 429.
+        """
         delay = 5.0
         for attempt in range(max_retries):
             try:
@@ -89,9 +94,7 @@ class DocPilotAgent:
         async with MCPToolClient() as mcp_tools:
             tool_schemas = await mcp_tools.list_tool_schemas()
 
-            response = self.client.chat.completions.create(
-                model=MODEL, messages=messages, tools=tool_schemas,
-            )
+            response = self._complete_with_retry(messages, tool_schemas)
             message = response.choices[0].message
 
             # Tool-calling loop: keep executing tools until the model is
@@ -108,9 +111,7 @@ class DocPilotAgent:
                         "tool_call_id": call.id,
                         "content": result,
                     })
-                response = self.client.chat.completions.create(
-                    model=MODEL, messages=messages, tools=tool_schemas,
-                )
+                response = self._complete_with_retry(messages, tool_schemas)
                 message = response.choices[0].message
 
         final_answer = message.content or ""
@@ -138,5 +139,7 @@ def _looks_uncertain(answer: str) -> bool:
         "don't have information", "doesn't contain", "does not contain",
         "no information", "i'm sorry, but", "unable to find", "cannot find",
     ]
+    # LLM output often uses typographic apostrophes (') instead of straight
+    # ones ('); normalize so marker matching isn't silently broken by this.
     lowered = answer.lower().replace("\u2019", "'")
     return any(m in lowered for m in markers)
