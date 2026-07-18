@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN python -m ingestion.run
+
 
 EXPOSE 8000
 
