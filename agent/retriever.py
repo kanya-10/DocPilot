@@ -8,7 +8,9 @@ from vectorstore import get_vector_store, Document
 
 # Below this similarity score we treat retrieval as "nothing relevant found"
 # rather than forcing a low-quality chunk into the prompt. Tuned empirically
-# against the eval set in evals/ -- see evals/README for the sweep.
+# against real retrieval scores -- see evals/ for the harness this was
+# validated against. Re-tune if you change embedding models, since different
+# models produce different cosine-similarity score distributions.
 RELEVANCE_THRESHOLD = 0.35
 
 
@@ -18,7 +20,9 @@ class Retriever:
         self.store = get_vector_store(dimension=EMBEDDING_DIMENSION)
 
     def retrieve(self, query: str, top_k: int = 5) -> list[Document]:
-        query_embedding = self.embedder.embed([query])[0]
+        # input_type="query" matters for e5-family models -- queries and
+        # passages are embedded slightly differently by design.
+        query_embedding = self.embedder.embed([query], input_type="query")[0]
         results = self.store.query(query_embedding, top_k=top_k)
         return [doc for doc in results if doc.score >= RELEVANCE_THRESHOLD]
 
